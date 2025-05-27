@@ -148,8 +148,8 @@ if uploader is not None:
             outliers_high = data[data > (q3 + 1.5 * iqr)]
             # Layman-friendly explanation using template
             explanation = (
-                f"> **Median = {q2:.1f}**: Half of the observations for **{col}** are {q2:.1f} or less, and half are {q2:.1f} or more, showing the central value is not skewed by extremes."
-                f"> **25th–75th percentile = {q1:.1f} to {q3:.1f}** (IQR = {iqr:.1f}): This range contains the middle 50% of the data, so most values for **{col}** fall within these bounds."
+                f"> **Median = {q2:.1f}**: Half of the observations for **{col}** are {q2:.1f} or less, and half are {q2:.1f} or more, showing the central value is not skewed by extremes.\n"
+                f"> **25th–75th percentile = {q1:.1f} to {q3:.1f}** (IQR = {iqr:.1f}): This range contains the middle 50% of the data, so most values for **{col}** fall within these bounds.\n"
                 f"> **Outliers**: There are **{outliers_low.count()}** unusually low and **{outliers_high.count()}** unusually high values lying outside the typical range."
             )
             st.write(explanation)
