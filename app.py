@@ -69,15 +69,17 @@ def render_layman_summary(df, num_cols, cat_cols, dt_cols):
 # ---- HISTOGRAM + KDE ----
 def render_histogram_with_kde(df, col):
     
+    # Generic histogram + KDE explanation
     st.markdown(
-    """
-    **How to use this:**  
-    - The bars show how many people fall into each range of values (e.g. hours trained, ages).  
-    - The smooth curve overlays the overall “shape” of the data so you can see where values cluster.  
-    - Look for the tallest bar or highest peak—that’s your most common range.  
-    - The width of the bars tells you how spread out everyone is: tight bars = most people are similar; long tails = some outliers.
-    """
-)
+        """
+        **How to use this chart:**  
+        - Bars show how many records fall into each value range.  
+        - The smooth curve overlays the overall “shape” of the distribution.  
+        - The tallest bar (or highest peak) marks the most common range of values.  
+        - Long tails indicate that a few records lie far from the bulk of the data.
+        """
+    )
+
     data = df[col].dropna()
     if data.empty:
         return
@@ -160,15 +162,17 @@ def render_histogram_with_kde(df, col):
 
 # ---- BOX PLOT + EXPLANATION (Plotly) ----
 def render_boxplot(df, col):
+    # Generic box-plot explanation
     st.markdown(
-    """
-    **How to use this:**  
-    - The central line (median) is the “middle” person—half scored above, half below.  
-    - The box shows where the middle 50% of people lie (from Q1 to Q3).  
-    - “Whiskers” extend to typical minimum/maximum values; dots beyond are outliers.  
-    - Use this to see at a glance both the typical range and whether any values fall far outside.
-    """
-)
+        """
+        **How to use this chart:**  
+        - The center line of the box is the median (middle) value.  
+        - The box edges are the 25th and 75th percentiles (middle 50% of records).  
+        - “Whiskers” extend to the typical minimum and maximum; dots beyond them are outliers.  
+        - Use this to see at a glance the typical range, the middle point, and any extreme values.
+        """
+    )
+
     data = df[col].dropna()
     if data.empty:
         return
@@ -216,15 +220,17 @@ def render_boxplot(df, col):
 
 # ---- ECDF with Plotly + Explanation ----
 def render_ecdf(df, col):
+    # Generic ECDF explanation
     st.markdown(
-    """
-    **How to use this:**  
-    - This curve tells you, for any given value on the x-axis, what fraction of people are at or below that value.  
-    - To find the 75th percentile (top-quarter cutoff), hover until the y-axis reads 0.75.  
-    - Steeper parts of the curve show where many people have similar values; flat parts show gaps.  
-    - Use ECDF when you need exact percentiles or want to compare two groups on the same plot.
-    """
-)
+        """
+        **How to use this chart:**  
+        - The curve shows what fraction of records are at or below each x-value.  
+        - To find any percentile (e.g. 0.75), hover until the y-axis reads that fraction.  
+        - Steep sections mean many records share similar values; flat sections mean gaps.  
+        - ECDFs are great for reading exact percentiles and comparing distributions.
+        """
+    )
+
     data = df[col].dropna()
     if data.empty:
         return
