@@ -99,18 +99,20 @@ def render_boxplot(df, col):
     if data.empty:
         return
 
-    # Build interactive box plot
+    # Build interactive horizontal box plot
     fig = px.box(
         data_frame=data.to_frame(name=col),
-        y=col,
-        points="outliers",       # show the outlier points
+        x=col,               # map to x for horizontal orientation
+        points="outliers",   # show outlier points
         title=f"Box Plot — {col}",
         labels={col: col}
     )
-    fig.update_layout(margin=dict(t=40, b=20, l=20, r=20))
+
+    # Make the box narrower
     fig.update_traces(
+        width=0.3,            # controls box "thickness"
         hovertemplate=(
-            f"{col}: %{{y}}<br>"
+            f"{col}: %{{x}}<br>"
             "Median: %{median}<br>"
             "Q1: %{q1}<br>"
             "Q3: %{q3}<br>"
@@ -118,9 +120,11 @@ def render_boxplot(df, col):
             "Upper whisker: %{upperfence}"
         )
     )
+    fig.update_layout(margin=dict(t=40, b=20, l=20, r=20))
+
     st.plotly_chart(fig, use_container_width=True)
 
-    # Layman summary of the same stats
+    # Layman summary
     q1, q2, q3 = np.percentile(data, [25, 50, 75])
     iqr = q3 - q1
     low_cut, high_cut = q1 - 1.5 * iqr, q3 + 1.5 * iqr
