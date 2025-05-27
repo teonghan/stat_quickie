@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.stats import gaussian_kde
 
 # App title
 st.set_page_config(page_title="Basic Stats Explorer", layout="wide")
@@ -63,7 +64,8 @@ if uploader is not None:
             spread_desc = "quite spread out" if ratio > 0.5 else "moderately spread" if ratio > 0.2 else "tightly clustered"
             st.write(
                 f"> **{col}** ranges from **{min_fmt}** to **{max_fmt}** (span **{span_fmt}** units), "
-                f"avg **{mean_fmt}**, median **{med_fmt}**; variability **{std_fmt}** so values are {spread_desc}.")
+                f"avg **{mean_fmt}**, median **{med_fmt}**; variability **{std_fmt}** so values are {spread_desc}."
+            )
         for col in cat_cols:
             vc = df[col].dropna().value_counts(normalize=True)
             if vc.empty: continue
@@ -86,6 +88,7 @@ if uploader is not None:
         if num_cols:
             st.write("**Numeric summary**")
             st.dataframe(df[num_cols].describe().T)
+        # Categorical distributions
         for col in cat_cols:
             st.write(f"**{col} - value counts**")
             counts = df[col].value_counts()
@@ -98,24 +101,24 @@ if uploader is not None:
                             xytext=(0,3), textcoords='offset points', ha='center')
             plt.xticks(rotation=45, ha='right')
             st.pyplot(fig)
+        # Numeric histograms with KDE overlay
         for col in num_cols:
-            st.write(f"**{col} - histogram**")
+            st.write(f"**{col} - histogram + KDE**")
             data = df[col].dropna()
             fig, ax = plt.subplots()
-            counts, bins, patches = ax.hist(data, bins=10)
-            ax.set_title(f"Distribution of {col}")
-            ax.set_ylabel('Frequency')
-            # annotate bars
-            for count, patch in zip(counts, patches):
-                x = patch.get_x() + patch.get_width()/2
-                y = count
-                ax.annotate(f'{int(count)}', xy=(x, y), xytext=(0,5),
-                            textcoords='offset points', ha='center')
+            # histogram as density
+            ax.hist(data, bins=10, density=True, alpha=0.5, edgecolor='black')
+            # KDE overlay
+            kde = gaussian_kde(data)
+            x_vals = np.linspace(data.min(), data.max(), 200)
+            ax.plot(x_vals, kde(x_vals), linewidth=2)
+            ax.set_title(f"Distribution & KDE of {col}")
+            ax.set_ylabel('Density')
             st.pyplot(fig)
 
-            # Layman explanation
-            if not data.empty:
-                # most common range
+            # Layman explanation for histogram
+            counts, bins = np.histogram(data, bins=10)
+            if counts.sum() > 0:
                 idx = counts.argmax()
                 bin_start, bin_end = bins[idx], bins[idx+1]
                 pct = counts[idx] / counts.sum() * 100
@@ -127,8 +130,8 @@ if uploader is not None:
                 else:
                     shape = 'a fairly symmetric shape'
                 st.write(
-                    f"> 📊 Most **{pct:.0f}%** of values for **{col}** fall between "
-                    f"{bin_start:.1f} and {bin_end:.1f}. The distribution shows {shape}."
+                    f"> 📊 About **{pct:.0f}%** of **{col}** values fall between {bin_start:.1f} and {bin_end:.1f}. "
+                    f"The curve shows {shape}."
                 )
 
     # 4) Correlation matrix
