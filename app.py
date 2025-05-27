@@ -146,6 +146,25 @@ if uploader is not None:
             iqr = q3 - q1
             outliers_low = data[data < (q1 - 1.5 * iqr)]
             outliers_high = data[data > (q3 + 1.5 * iqr)]
+            # Layman-friendly explanation using template
+            st.write(
+                f"> **Median = {q2:.1f}**: Half of the observations for **{col}** are {q2:.1f} or less, and half are {q2:.1f} or more, showing the central value not skewed by extremes.
+"
+                f"> **25th–75th percentile = {q1:.1f} to {q3:.1f}** (IQR = {iqr:.1f}): This range contains the middle 50% of the data, so most values for **{col}** fall within these bounds.
+"
+                f"> **Outliers**: There are **{outliers_low.count()}** unusually low and **{outliers_high.count()}** unusually high values, which lie outside the typical range."            
+            )
+            data = df[col].dropna()
+            fig, ax = plt.subplots()
+            ax.boxplot(data, vert=False, patch_artist=True)
+            ax.set_xlabel(col)
+            ax.set_title(f"Box Plot of {col}")
+            st.pyplot(fig)
+            # Compute quartiles and IQR
+            q1, q2, q3 = np.percentile(data, [25, 50, 75])
+            iqr = q3 - q1
+            outliers_low = data[data < (q1 - 1.5 * iqr)]
+            outliers_high = data[data > (q3 + 1.5 * iqr)]
             st.write(
                 f"> 📦 The median (middle) {col} is **{q2:.1f}**, with most values between **{q1:.1f}** (25th percentile) "
                 f"and **{q3:.1f}** (75th percentile), so the main spread (IQR) is **{iqr:.1f}**. "
