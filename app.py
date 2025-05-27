@@ -165,7 +165,7 @@ def render_boxplot(df, col):
 
     # Make the box narrower
     fig.update_traces(
-        width=0.3,            # controls box "thickness"
+        width=0.2,            # controls box "thickness"
         hovertemplate=(
             f"{col}: %{{x}}<br>"
             "Median: %{median}<br>"
