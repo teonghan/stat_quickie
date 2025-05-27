@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import gaussian_kde
+import plotly.express as px  # new import for interactive ECDFs
 
 st.set_page_config(page_title="Basic Stats Explorer", layout="wide")
 
@@ -117,20 +118,31 @@ def render_boxplot(df, col):
 """
     st.write(explanation)
 
-# ---- ECDF PLOT + EXPLANATION ----
+# ---- ECDF with Plotly + Explanation ----
 def render_ecdf(df, col):
     data = df[col].dropna()
-    if data.empty: return
-    x = np.sort(data)
-    y = np.arange(1, len(x)+1) / len(x)
+    if data.empty:
+        return
 
-    fig, ax = plt.subplots()
-    ax.step(x, y, where='post')
-    ax.set_xlabel(col)
-    ax.set_ylabel("Proportion ≤ x")
-    ax.set_ylim(0, 1)
-    st.pyplot(fig)
+    # build interactive ECDF
+    fig = px.ecdf(
+        data_frame=data.to_frame(name=col),
+        x=col,
+        title=f"ECDF — {col}",
+        labels={col: col, "ecdf": "Proportion ≤ x"},
+    )
+    fig.update_traces(
+        hovertemplate=f"{col}: %{{x:.1f}}<br>Proportion: %{{y:.2f}}"
+    )
+    fig.update_layout(
+        xaxis_title=col,
+        yaxis_title="Proportion ≤ x",
+        hovermode="closest",
+        template="simple_white"
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
+    # Layman explanation of key percentiles
     p25, p50, p75 = np.percentile(data, [25, 50, 75])
     explanation = (
         f"> **ECDF for {col}** shows what fraction of data is at or below each value.\n\n"
