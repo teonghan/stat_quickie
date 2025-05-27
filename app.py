@@ -52,14 +52,13 @@ if uploader is not None:
             data = df[col].dropna()
             if data.empty:
                 continue
-            mean = data.mean()
-            median = data.median()
-            minimum = data.min()
-            maximum = data.max()
-            span = maximum - minimum
-            std = data.std()
+            mean = data.mean(); median = data.median()
+            minimum = data.min(); maximum = data.max()
+            span = maximum - minimum; std = data.std()
             def fmt(x): return f"{x:,.1f}" if abs(x) < 1e4 else f"{x:,.0f}"
-            mean_fmt, med_fmt, min_fmt, max_fmt, span_fmt, std_fmt = map(fmt, [mean, median, minimum, maximum, span, std])
+            mean_fmt, med_fmt, min_fmt, max_fmt, span_fmt, std_fmt = map(
+                fmt, [mean, median, minimum, maximum, span, std]
+            )
             ratio = std / abs(mean) if mean != 0 else 0
             spread_desc = "quite spread out" if ratio > 0.5 else "moderately spread" if ratio > 0.2 else "tightly clustered"
             st.write(
@@ -68,8 +67,7 @@ if uploader is not None:
         for col in cat_cols:
             vc = df[col].dropna().value_counts(normalize=True)
             if vc.empty: continue
-            top, pct = vc.idxmax(), vc.max() * 100
-            unique = df[col].nunique()
+            top, pct = vc.idxmax(), vc.max() * 100; unique = df[col].nunique()
             st.write(f"> **{col}** is mostly **{top}** ({pct:.0f}%) across **{unique}** unique values.")
         for col in dt_cols:
             dates = df[col].dropna().sort_values()
@@ -93,25 +91,45 @@ if uploader is not None:
             counts = df[col].value_counts()
             fig, ax = plt.subplots()
             bars = ax.bar(counts.index.astype(str), counts.values)
-            ax.set_ylabel('Count')
-            ax.set_title(f"{col} Distribution")
+            ax.set_ylabel('Count'); ax.set_title(f"{col} Distribution")
             for bar in bars:
-                height = bar.get_height()
-                ax.annotate(f'{int(height)}',
-                    xy=(bar.get_x() + bar.get_width() / 2, height),
-                    xytext=(0, 3), textcoords='offset points', ha='center', va='bottom')
+                h = bar.get_height()
+                ax.annotate(f'{int(h)}', xy=(bar.get_x()+bar.get_width()/2, h),
+                            xytext=(0,3), textcoords='offset points', ha='center')
             plt.xticks(rotation=45, ha='right')
             st.pyplot(fig)
         for col in num_cols:
+            st.write(f"**{col} - histogram**")
+            data = df[col].dropna()
             fig, ax = plt.subplots()
-            counts, bins, patches = ax.hist(df[col].dropna(), bins=10)
+            counts, bins, patches = ax.hist(data, bins=10)
             ax.set_title(f"Distribution of {col}")
             ax.set_ylabel('Frequency')
+            # annotate bars
             for count, patch in zip(counts, patches):
-                x = patch.get_x() + patch.get_width() / 2
+                x = patch.get_x() + patch.get_width()/2
                 y = count
-                ax.annotate(f'{int(count)}', xy=(x, y), xytext=(0, 5), textcoords='offset points', ha='center')
+                ax.annotate(f'{int(count)}', xy=(x, y), xytext=(0,5),
+                            textcoords='offset points', ha='center')
             st.pyplot(fig)
+
+            # Layman explanation
+            if not data.empty:
+                # most common range
+                idx = counts.argmax()
+                bin_start, bin_end = bins[idx], bins[idx+1]
+                pct = counts[idx] / counts.sum() * 100
+                skew = data.skew()
+                if skew > 0.5:
+                    shape = 'a right-skewed shape (long tail to the right)'
+                elif skew < -0.5:
+                    shape = 'a left-skewed shape (long tail to the left)'
+                else:
+                    shape = 'a fairly symmetric shape'
+                st.write(
+                    f"> 📊 Most **{pct:.0f}%** of values for **{col}** fall between "
+                    f"{bin_start:.1f} and {bin_end:.1f}. The distribution shows {shape}."
+                )
 
     # 4) Correlation matrix
     if show_corr and len(num_cols) > 1:
@@ -122,8 +140,7 @@ if uploader is not None:
         fig.colorbar(cax)
         ticks = np.arange(len(num_cols))
         ax.set_xticks(ticks); ax.set_yticks(ticks)
-        ax.set_xticklabels(num_cols, rotation=90)
-        ax.set_yticklabels(num_cols)
+        ax.set_xticklabels(num_cols, rotation=90); ax.set_yticklabels(num_cols)
         st.pyplot(fig)
 else:
     st.info("Please upload a file to begin analysis.")
