@@ -49,18 +49,36 @@ if uploader is not None:
     # 2) Layman Summary
     if show_layman:
         st.subheader("✏️ Layman-Friendly Summary")
-        # Numeric summaries
+        # Numeric summaries with min, max, range, and spread
         for col in num_cols:
             data = df[col].dropna()
             if data.empty:
                 continue
             mean = data.mean()
             median = data.median()
-            span = data.max() - data.min()
-            mean_fmt = f"{mean:,.1f}" if abs(mean) < 1e4 else f"{mean:,.0f}"
-            median_fmt = f"{median:,.1f}" if abs(median) < 1e4 else f"{median:,.0f}"
-            span_fmt = f"{span:,.1f}" if abs(span) < 1e4 else f"{span:,.0f}"
-            st.write(f"> **{col}** has an average of **{mean_fmt}**, median **{median_fmt}**, spanning **{span_fmt}** units.")
+            minimum = data.min()
+            maximum = data.max()
+            span = maximum - minimum
+            std = data.std()
+            # formatted values
+            def fmt(x):
+                return f"{x:,.1f}" if abs(x) < 1e4 else f"{x:,.0f}"
+            mean_fmt, median_fmt, min_fmt, max_fmt, span_fmt, std_fmt = map(fmt, [mean, median, minimum, maximum, span, std])
+            # qualitative spread
+            if mean != 0:
+                ratio = std / abs(mean)
+            else:
+                ratio = 0
+            if ratio > 0.5:
+                spread_desc = "quite spread out"
+            elif ratio > 0.2:
+                spread_desc = "moderately spread"
+            else:
+                spread_desc = "tightly clustered"
+            st.write(
+                f"> **{col}** ranges from **{min_fmt}** to **{max_fmt}** (span **{span_fmt}** units),
+                with an average of **{mean_fmt}** and median **{median_fmt}**. The variability is **{std_fmt}** units,
+                so the values are {spread_desc} overall.")
         # Categorical summaries
         for col in cat_cols:
             vc = df[col].dropna().value_counts(normalize=True)
