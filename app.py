@@ -107,16 +107,11 @@ if uploader is not None:
             st.write(f"**{col} - histogram + KDE**")
             data = df[col].dropna()
             fig, ax1 = plt.subplots()
-            # Histogram on primary axis (counts)
             counts, bins, patches = ax1.hist(data, bins=10, edgecolor='black', alpha=0.6)
-            ax1.set_ylabel('Count')
-            ax1.set_xlabel(col)
-            # Annotate counts
+            ax1.set_ylabel('Count'); ax1.set_xlabel(col)
             for bar, count in zip(patches, counts):
-                height = count
-                ax1.annotate(f'{int(height)}', xy=(bar.get_x()+bar.get_width()/2, height),
+                ax1.annotate(f'{int(count)}', xy=(bar.get_x()+bar.get_width()/2, count),
                              xytext=(0,3), textcoords='offset points', ha='center')
-            # KDE on secondary axis (density)
             ax2 = ax1.twinx()
             kde = gaussian_kde(data)
             x_vals = np.linspace(data.min(), data.max(), 200)
@@ -124,23 +119,38 @@ if uploader is not None:
             ax2.set_ylabel('Density')
             ax1.set_title(f"{col} Distribution & KDE")
             st.pyplot(fig)
-
             # Layman explanation
             if counts.sum() > 0:
                 idx = counts.argmax()
                 bin_start, bin_end = bins[idx], bins[idx+1]
                 pct = counts[idx] / counts.sum() * 100
                 skew = data.skew()
-                if skew > 0.5:
-                    shape = 'a right-skewed shape (long tail to the right)'
-                elif skew < -0.5:
-                    shape = 'a left-skewed shape (long tail to the left)'
-                else:
-                    shape = 'a fairly symmetric shape'
+                shape = ('a right-skewed shape (long tail to the right)' if skew > 0.5 else
+                         'a left-skewed shape (long tail to the left)' if skew < -0.5 else
+                         'a fairly symmetric shape')
                 st.write(
                     f"> 📊 About **{pct:.0f}%** of **{col}** values fall between {bin_start:.1f} and {bin_end:.1f}. "
                     f"The distribution shows {shape}."
                 )
+        # Box plots with layman explanation
+        for col in num_cols:
+            st.write(f"**{col} - box plot**")
+            data = df[col].dropna()
+            fig, ax = plt.subplots()
+            ax.boxplot(data, vert=False, patch_artist=True)
+            ax.set_xlabel(col)
+            ax.set_title(f"Box Plot of {col}")
+            st.pyplot(fig)
+            # Compute quartiles and IQR
+            q1, q2, q3 = np.percentile(data, [25, 50, 75])
+            iqr = q3 - q1
+            outliers_low = data[data < (q1 - 1.5 * iqr)]
+            outliers_high = data[data > (q3 + 1.5 * iqr)]
+            st.write(
+                f"> 📦 The median (middle) {col} is **{q2:.1f}**, with most values between **{q1:.1f}** (25th percentile) "
+                f"and **{q3:.1f}** (75th percentile), so the main spread (IQR) is **{iqr:.1f}**. "
+                f"There are **{outliers_low.count()}** unusually low and **{outliers_high.count()}** unusually high values."
+            )
 
     # 4) Correlation matrix
     if show_corr and len(num_cols) > 1:
