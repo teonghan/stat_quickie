@@ -93,28 +93,46 @@ def render_histogram_with_kde(df, col):
 
     st.pyplot(fig)
 
-# ---- BOX PLOT + EXPLANATION ----
+# ---- BOX PLOT + EXPLANATION (Plotly) ----
 def render_boxplot(df, col):
     data = df[col].dropna()
-    if data.empty: return
+    if data.empty:
+        return
 
+    # Build interactive box plot
+    fig = px.box(
+        data_frame=data.to_frame(name=col),
+        y=col,
+        points="outliers",       # show the outlier points
+        title=f"Box Plot — {col}",
+        labels={col: col}
+    )
+    fig.update_layout(margin=dict(t=40, b=20, l=20, r=20))
+    fig.update_traces(
+        hovertemplate=(
+            f"{col}: %{{y}}<br>"
+            "Median: %{median}<br>"
+            "Q1: %{q1}<br>"
+            "Q3: %{q3}<br>"
+            "Lower whisker: %{lowerfence}<br>"
+            "Upper whisker: %{upperfence}"
+        )
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Layman summary of the same stats
     q1, q2, q3 = np.percentile(data, [25, 50, 75])
     iqr = q3 - q1
-    low_cut, high_cut = q1 - 1.5*iqr, q3 + 1.5*iqr
+    low_cut, high_cut = q1 - 1.5 * iqr, q3 + 1.5 * iqr
     out_low = data[data < low_cut]
     out_high = data[data > high_cut]
-
-    fig, ax = plt.subplots()
-    ax.boxplot(data, vert=False, patch_artist=True)
-    ax.set_xlabel(col)
-    st.pyplot(fig)
 
     explanation = f"""
 > **Median = {q2:.1f}**: Half of the observations for **{col}** are {q2:.1f} or less, and half are {q2:.1f} or more.
 
-> **25th–75th percentile = {q1:.1f} to {q3:.1f}** (IQR = {iqr:.1f}): This is the range for the middle 50% of the data—exactly half of the records fall here.
+> **25th–75th percentile = {q1:.1f} to {q3:.1f}** (IQR = {iqr:.1f}): Exactly half of the records fall within this middle range.
 
-> **Outliers**: There are **{len(out_low)}** unusually low and **{len(out_high)}** unusually high values.
+> **Outliers**: {len(out_low)} unusually low and {len(out_high)} unusually high values have been detected.
 """
     st.write(explanation)
 
