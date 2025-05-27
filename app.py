@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import gaussian_kde
+import plotly.graph_objects as go
 import plotly.express as px  # new import for interactive ECDFs
 
 st.set_page_config(page_title="Basic Stats Explorer", layout="wide")
