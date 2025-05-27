@@ -71,52 +71,80 @@ def render_histogram_with_kde(df, col):
     if data.empty:
         return
 
-    # --- PLOT HISTOGRAM + KDE WITH DUAL AXES (Matplotlib example) ---
-    fig, ax1 = plt.subplots()
-    counts, bins, _ = ax1.hist(data, bins=10, edgecolor='black', alpha=0.6)
-    ax1.set_ylabel("Count")
-    ax1.set_xlabel(col)
+    # --- Prepare data ---
+    counts, bins = np.histogram(data, bins=10)
+    bin_centers = 0.5 * (bins[:-1] + bins[1:])
 
-    # annotate counts
-    for i, c in enumerate(counts):
-        mid = (bins[i] + bins[i+1]) / 2
-        ax1.annotate(f"{int(c)}", xy=(mid, c), xytext=(0, 3),
-                     textcoords="offset points", ha="center", fontsize=8)
-
-    ax2 = ax1.twinx()
+    # KDE
     kde = gaussian_kde(data)
     x_vals = np.linspace(data.min(), data.max(), 200)
-    ax2.plot(x_vals, kde(x_vals), color='C1', linewidth=2)
-    ax2.set_ylabel("Density")
+    y_kde = kde(x_vals)
 
-    st.pyplot(fig)
+    # --- Build Plotly figure ---
+    fig = go.Figure()
 
-    # --- LAYMAN SUMMARY ---
-    # identify modal bin
+    # Histogram on primary y-axis
+    fig.add_trace(go.Bar(
+        x=bin_centers,
+        y=counts,
+        width=(bins[1] - bins[0]) * 0.9,
+        name="Count",
+        marker_color="lightblue",
+        hovertemplate="Range: %{x:.1f}<br>Count: %{y}<extra></extra>"
+    ))
+
+    # KDE on secondary y-axis
+    fig.add_trace(go.Scatter(
+        x=x_vals,
+        y=y_kde,
+        name="Density",
+        line=dict(color="orange", width=2),
+        hovertemplate="x: %{x:.1f}<br>Density: %{y:.3f}<extra></extra>",
+        yaxis="y2"
+    ))
+
+    # Layout with two y-axes
+    fig.update_layout(
+        title=f"Histogram & KDE — {col}",
+        xaxis_title=col,
+        yaxis=dict(title="Count"),
+        yaxis2=dict(
+            title="Density",
+            overlaying="y",
+            side="right",
+            showgrid=False
+        ),
+        bargap=0.1,
+        template="simple_white",
+        margin=dict(t=40, b=20, l=40, r=40),
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+    # --- Layman Summary ---
+    total = len(data)
     modal_idx = counts.argmax()
-    modal_range = (bins[modal_idx], bins[modal_idx+1])
-    modal_pct = counts[modal_idx] / len(data) * 100
+    modal_range = (bins[modal_idx], bins[modal_idx + 1])
+    modal_pct = counts[modal_idx] / total * 100
 
     mn = data.mean()
     med = data.median()
     std = data.std()
     skew = data.skew()
-
-    # shape descriptor
     if skew > 0.5:
-        shape = "right-skewed (more high values)"
+        shape = "Right-skewed: most values are lower with a tail toward higher values."
     elif skew < -0.5:
-        shape = "left-skewed (more low values)"
+        shape = "Left-skewed: most values are higher with a tail toward lower values."
     else:
-        shape = "fairly symmetric"
+        shape = "Fairly symmetric around the middle."
 
-    explanation = f"""
+    summary = f"""
 > **Histogram & KDE for {col}:**
-> - Most common range: **{modal_range[0]:.1f}–{modal_range[1]:.1f}** ({modal_pct:.0f}% of observations fall here).
-> - Average (mean) ≈ **{mn:.1f}**, typical (median) = **{med:.1f}**, variability (σ) ≈ **{std:.1f}**.
-> - Distribution appears **{shape}**.
+> - **Most common range:** {modal_range[0]:.1f}–{modal_range[1]:.1f} ({modal_pct:.0f}% of observations).
+> - **Mean:** {mn:.1f}, **Median:** {med:.1f}, **Std Dev (σ):** {std:.1f}.
+> - **Shape:** {shape}
 """
-    st.markdown(explanation)
+    st.markdown(summary)
 
 
 # ---- BOX PLOT + EXPLANATION (Plotly) ----
