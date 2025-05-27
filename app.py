@@ -54,7 +54,7 @@ if uploader is not None:
             if data.empty:
                 continue
             mean = data.mean(); median = data.median()
-            minimum = data.min(); maximum = data.max()
+            minimum, maximum = data.min(), data.max()
             span = maximum - minimum; std = data.std()
             def fmt(x): return f"{x:,.1f}" if abs(x) < 1e4 else f"{x:,.0f}"
             mean_fmt, med_fmt, min_fmt, max_fmt, span_fmt, std_fmt = map(
@@ -85,6 +85,7 @@ if uploader is not None:
     # 3) Detailed Stats & Charts
     if show_details:
         st.subheader("📈 Detailed Statistics & Charts")
+        # Numeric summary table
         if num_cols:
             st.write("**Numeric summary**")
             st.dataframe(df[num_cols].describe().T)
@@ -101,23 +102,30 @@ if uploader is not None:
                             xytext=(0,3), textcoords='offset points', ha='center')
             plt.xticks(rotation=45, ha='right')
             st.pyplot(fig)
-        # Numeric histograms with KDE overlay
+        # Numeric histograms with KDE overlay on twin y-axis
         for col in num_cols:
             st.write(f"**{col} - histogram + KDE**")
             data = df[col].dropna()
-            fig, ax = plt.subplots()
-            # histogram as density
-            ax.hist(data, bins=10, density=True, alpha=0.5, edgecolor='black')
-            # KDE overlay
+            fig, ax1 = plt.subplots()
+            # Histogram on primary axis (counts)
+            counts, bins, patches = ax1.hist(data, bins=10, edgecolor='black', alpha=0.6)
+            ax1.set_ylabel('Count')
+            ax1.set_xlabel(col)
+            # Annotate counts
+            for bar, count in zip(patches, counts):
+                height = count
+                ax1.annotate(f'{int(height)}', xy=(bar.get_x()+bar.get_width()/2, height),
+                             xytext=(0,3), textcoords='offset points', ha='center')
+            # KDE on secondary axis (density)
+            ax2 = ax1.twinx()
             kde = gaussian_kde(data)
             x_vals = np.linspace(data.min(), data.max(), 200)
-            ax.plot(x_vals, kde(x_vals), linewidth=2)
-            ax.set_title(f"Distribution & KDE of {col}")
-            ax.set_ylabel('Density')
+            ax2.plot(x_vals, kde(x_vals), linewidth=2)
+            ax2.set_ylabel('Density')
+            ax1.set_title(f"{col} Distribution & KDE")
             st.pyplot(fig)
 
-            # Layman explanation for histogram
-            counts, bins = np.histogram(data, bins=10)
+            # Layman explanation
             if counts.sum() > 0:
                 idx = counts.argmax()
                 bin_start, bin_end = bins[idx], bins[idx+1]
@@ -131,7 +139,7 @@ if uploader is not None:
                     shape = 'a fairly symmetric shape'
                 st.write(
                     f"> 📊 About **{pct:.0f}%** of **{col}** values fall between {bin_start:.1f} and {bin_end:.1f}. "
-                    f"The curve shows {shape}."
+                    f"The distribution shows {shape}."
                 )
 
     # 4) Correlation matrix
