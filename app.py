@@ -17,7 +17,39 @@ st.sidebar.header("2. Display Options")
 show_structure = st.sidebar.checkbox("Show Data Structure", value=True)
 show_layman = st.sidebar.checkbox("Show Layman Summary", value=True)
 show_details = st.sidebar.checkbox("Show Detailed Stats & Charts", value=False)
-show_corr = st.sidebar.checkbox("Show Correlation Matrix", value=False)
+    # 4) ECDF plots
+    if show_ecdf:
+        st.subheader("📊 ECDF Plots")
+        for col in num_cols:
+            st.write(f"**{col} - ECDF plot**")
+            data = df[col].dropna()
+            if data.empty:
+                continue
+            x = np.sort(data)
+            y = np.arange(1, len(x)+1) / len(x)
+            fig, ax = plt.subplots()
+            ax.step(x, y, where='post')
+            ax.set_xlabel(col)
+            ax.set_ylabel("Proportion ≤ x")
+            ax.set_ylim(0, 1)
+            ax.set_title(f"ECDF of {col}")
+            st.pyplot(fig)
+            # Layman-friendly explanation
+            pct_vals = np.percentile(data, [25, 50, 75])
+            st.write(
+                f"> 📈 25% of {col} values are ≤ {pct_vals[0]:.1f}; 50% (median) are ≤ {pct_vals[1]:.1f}; "
+                f"75% are ≤ {pct_vals[2]:.1f}."
+            )
+            skew = data.skew()
+            if skew > 0.5:
+                shape = 'right-skewed (long tail to the right)'
+            elif skew < -0.5:
+                shape = 'left-skewed (long tail to the left)'
+            else:
+                shape = 'fairly symmetric'
+            st.write(f"> The distribution appears {shape}.")
+
+    # 5) Correlation matrix
 
 if uploader is not None:
     # Load DataFrame
@@ -147,11 +179,13 @@ if uploader is not None:
             outliers_low = data[data < (q1 - 1.5 * iqr)]
             outliers_high = data[data > (q3 + 1.5 * iqr)]
             # Layman-friendly explanation using template
-            explanation = (
-                f"> **Median = {q2:.1f}**: Half of the observations for **{col}** are {q2:.1f} or less, and half are {q2:.1f} or more, showing the central value is not skewed by extremes.\n"
-                f"> **25th–75th percentile = {q1:.1f} to {q3:.1f}** (IQR = {iqr:.1f}): This range contains the middle 50% of the data, so half of the values for **{col}** fall within these bounds.\n"
-                f"> **Outliers**: There are **{outliers_low.count()}** unusually low and **{outliers_high.count()}** unusually high values lying outside the typical range."
-            )
+            explanation = f"""
+> **Median = {q2:.1f}**: Half of the observations for **{col}** are {q2:.1f} or less, and half are {q2:.1f} or more, showing the central value is not skewed by extremes.
+
+> **25th–75th percentile = {q1:.1f} to {q3:.1f}** (IQR = {iqr:.1f}): This is the range for the middle 50% of the data—you should know that exactly half of the staff fall within this range.
+
+> **Outliers**: There are **{outliers_low.count()}** unusually low and **{outliers_high.count()}** unusually high values lying outside the typical range.
+"""
             st.write(explanation)
 
 
