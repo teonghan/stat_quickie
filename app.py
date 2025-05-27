@@ -68,23 +68,21 @@ def render_layman_summary(df, num_cols, cat_cols, dt_cols):
 # ---- HISTOGRAM + KDE ----
 def render_histogram_with_kde(df, col):
     data = df[col].dropna()
-    if data.empty: return
-    # optionally subsample for speed
-    if len(data) > 5000:
-        data = data.sample(5000, random_state=0)
+    if data.empty:
+        return
 
+    # --- PLOT HISTOGRAM + KDE WITH DUAL AXES (Matplotlib example) ---
     fig, ax1 = plt.subplots()
-    # primary: counts
     counts, bins, _ = ax1.hist(data, bins=10, edgecolor='black', alpha=0.6)
     ax1.set_ylabel("Count")
     ax1.set_xlabel(col)
 
+    # annotate counts
     for i, c in enumerate(counts):
         mid = (bins[i] + bins[i+1]) / 2
         ax1.annotate(f"{int(c)}", xy=(mid, c), xytext=(0, 3),
                      textcoords="offset points", ha="center", fontsize=8)
 
-    # secondary: kde
     ax2 = ax1.twinx()
     kde = gaussian_kde(data)
     x_vals = np.linspace(data.min(), data.max(), 200)
@@ -92,6 +90,34 @@ def render_histogram_with_kde(df, col):
     ax2.set_ylabel("Density")
 
     st.pyplot(fig)
+
+    # --- LAYMAN SUMMARY ---
+    # identify modal bin
+    modal_idx = counts.argmax()
+    modal_range = (bins[modal_idx], bins[modal_idx+1])
+    modal_pct = counts[modal_idx] / len(data) * 100
+
+    mn = data.mean()
+    med = data.median()
+    std = data.std()
+    skew = data.skew()
+
+    # shape descriptor
+    if skew > 0.5:
+        shape = "right-skewed (more high values)"
+    elif skew < -0.5:
+        shape = "left-skewed (more low values)"
+    else:
+        shape = "fairly symmetric"
+
+    explanation = f"""
+> **Histogram & KDE for {col}:**
+> - Most common range: **{modal_range[0]:.1f}–{modal_range[1]:.1f}** ({modal_pct:.0f}% of observations fall here).
+> - Average (mean) ≈ **{mn:.1f}**, typical (median) = **{med:.1f}**, variability (σ) ≈ **{std:.1f}**.
+> - Distribution appears **{shape}**.
+"""
+    st.markdown(explanation)
+
 
 # ---- BOX PLOT + EXPLANATION (Plotly) ----
 def render_boxplot(df, col):
