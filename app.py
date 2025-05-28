@@ -298,7 +298,7 @@ def main():
     st.sidebar.header("Show Sections")
     show_structure = st.sidebar.checkbox("Data Structure Overview", True)
     show_layman = st.sidebar.checkbox("Layman Summary", True)
-    show_details = st.sidebar.checkbox("Detailed Stats & Charts", True)
+    show_details = st.sidebar.checkbox("Detailed Stats & Charts", False)
     show_ecdf = st.sidebar.checkbox("ECDF Plots", False)
     show_corr = st.sidebar.checkbox("Correlation Matrix", False)
 
