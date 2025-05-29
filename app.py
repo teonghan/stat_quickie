@@ -263,19 +263,36 @@ def render_ecdf(df, col):
     )
     st.write(explanation)
 
-# ---- CORRELATION MATRIX ----
+# ---- CORRELATION MATRIX WITH R² ----
 def render_correlation(df, num_cols):
     if len(num_cols) < 2:
         st.info("Need at least two numeric columns for correlation matrix.")
         return
+
+    # Compute Pearson correlation and R²
     corr = df[num_cols].corr()
+    r2 = corr**2
+
     fig, ax = plt.subplots(figsize=(6, 6))
     cax = ax.matshow(corr, vmin=-1, vmax=1, cmap="coolwarm")
-    fig.colorbar(cax)
+    fig.colorbar(cax, ax=ax)
+
+    # Set tick labels
     ax.set_xticks(range(len(num_cols)))
     ax.set_xticklabels(num_cols, rotation=90)
     ax.set_yticks(range(len(num_cols)))
     ax.set_yticklabels(num_cols)
+
+    # Annotate each cell with “ρ=…\nR²=…”
+    for i in range(len(num_cols)):
+        for j in range(len(num_cols)):
+            if i == j:
+                # perfect correlation on diagonal
+                text = f"ρ=1.00\nR²=1.00"
+            else:
+                text = f"ρ={corr.iloc[i,j]:.2f}\nR²={r2.iloc[i,j]:.2f}"
+            ax.text(j, i, text, ha="center", va="center", color="white", fontsize=8)
+
     st.pyplot(fig)
 
 # ---- MAIN APP ----
