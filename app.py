@@ -104,7 +104,11 @@ def render_regression(df, num_cols):
 
     # 4) Compute metrics
     r2 = r2_score(y, preds)
-    rmse = mean_squared_error(y, preds, squared=False)
+    # rmse = mean_squared_error(y, preds, squared=False)
+
+    # do this:
+    mse = mean_squared_error(y, preds)
+    rmse = np.sqrt(mse)
 
     # 5) Show formula
     terms = [f"{coef:.3f}·{name}" for coef, name in zip(model.coef_, x_cols)]
