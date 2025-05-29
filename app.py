@@ -499,7 +499,7 @@ def main():
 
     # Section X: Quadrant
     if show_quad:
-        st.header("�four_leaf_clover Quadrant Analysis")
+        st.header("🍀 Quadrant Analysis")
         try:
             render_quadrant_analysis(df, num_cols)
         except Exception as e:
