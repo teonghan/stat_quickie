@@ -69,79 +69,59 @@ def render_layman_summary(df, num_cols, cat_cols, dt_cols):
 
 # ---- QUADRANT BABY! ----
 def render_quadrant_analysis(df, num_cols):
-    # Select the two axes
+    # Sidebar selectors
     x_col = st.sidebar.selectbox("Choose X-axis", num_cols, key="quad_x")
     y_col = st.sidebar.selectbox("Choose Y-axis", num_cols, key="quad_y")
 
     st.sidebar.markdown("---")
-    st.sidebar.write("**Cut points for quadrants**")
-
     chop_opts = ["Mean", "Median", "Custom"]
     x_method = st.sidebar.selectbox(f"{x_col} chop at", chop_opts, key="quad_x_method")
     y_method = st.sidebar.selectbox(f"{y_col} chop at", chop_opts, key="quad_y_method")
 
     # Determine thresholds
-    if x_method == "Mean":
-        x_thresh = df[x_col].mean()
-    elif x_method == "Median":
-        x_thresh = df[x_col].median()
-    else:
-        x_thresh = st.sidebar.number_input(f"{x_col} custom threshold", value=float(df[x_col].mean()))
+    def get_thresh(col, method):
+        if method == "Mean":
+            return df[col].mean()
+        if method == "Median":
+            return df[col].median()
+        return st.sidebar.number_input(f"{col} custom threshold", value=float(df[col].mean()))
 
-    if y_method == "Mean":
-        y_thresh = df[y_col].mean()
-    elif y_method == "Median":
-        y_thresh = df[y_col].median()
-    else:
-        y_thresh = st.sidebar.number_input(f"{y_col} custom threshold", value=float(df[y_col].mean()))
+    x_thresh = get_thresh(x_col, x_method)
+    y_thresh = get_thresh(y_col, y_method)
 
-    # Scatter & quadrant assignment
-    data = df[[x_col, y_col]].dropna()
-    x = data[x_col]
-    y = data[y_col]
+    # Prepare data
+    data = df[[x_col, y_col]].dropna().copy()
+    # Assign quadrants
+    def quad_label(r):
+        if   r[x_col] > x_thresh and r[y_col] > y_thresh: return "Q1: high/high"
+        if   r[x_col] <= x_thresh and r[y_col] > y_thresh: return "Q2: low/high"
+        if   r[x_col] <= x_thresh and r[y_col] <= y_thresh: return "Q3: low/low"
+        return "Q4: high/low"
+    data["Quadrant"] = data.apply(quad_label, axis=1)
 
-    # Scatter & quadrant assignment
-    data = df[[x_col, y_col]].dropna()
-    x = data[x_col]
-    y = data[y_col]
+    # Build interactive scatter
+    fig = px.scatter(
+        data, x=x_col, y=y_col, color="Quadrant",
+        title=f"🍀 Quadrant Analysis: {x_col} vs {y_col}",
+        labels={x_col: x_col, y_col: y_col},
+        symbol="Quadrant", # different symbols per quadrant if desired
+        hover_data={x_col: True, y_col: True, "Quadrant": True}
+    )
+    # Add chop lines
+    fig.add_shape(dict(type="line", x0=x_thresh, x1=x_thresh, y0=data[y_col].min(),
+                       y1=data[y_col].max(), line=dict(dash="dash", color="gray")))
+    fig.add_shape(dict(type="line", y0=y_thresh, y1=y_thresh, x0=data[x_col].min(),
+                       x1=data[x_col].max(), line=dict(dash="dash", color="gray")))
 
-    conditions = [
-        (x > x_thresh) & (y > y_thresh),
-        (x <= x_thresh) & (y > y_thresh),
-        (x <= x_thresh) & (y <= y_thresh),
-        (x > x_thresh) & (y <= y_thresh),
-    ]
-    labels = ["Q1: high/high", "Q2: low/high", "Q3: low/low", "Q4: high/low"]
+    fig.update_layout(legend_title_text="Quadrant",
+                      margin=dict(t=50, l=40, r=40, b=40))
+    st.plotly_chart(fig, use_container_width=True)
 
-    # === Fix here ===
-    quad = np.select(conditions, labels, default="").astype(object)
-    quad_series = pd.Series(quad)
-    counts = quad_series[quad_series != ""].value_counts().reindex(labels, fill_value=0)
-    # ================
-
-    # Plot
-    fig, ax = plt.subplots()
-    cmap = list(mcolors.TABLEAU_COLORS.values())
-    for i, label in enumerate(labels):
-        subset = data[quad == label]
-        ax.scatter(
-            subset[x_col], subset[y_col],
-            label=f"{label} ({counts[label]})",
-            color=cmap[i], alpha=0.7, edgecolor="k", s=50
-        )
-    ax.axvline(x_thresh, color="gray", linestyle="--")
-    ax.axhline(y_thresh, color="gray", linestyle="--")
-    ax.set_xlabel(x_col)
-    ax.set_ylabel(y_col)
-    ax.set_title(f"Quadrant Analysis: {x_col} vs {y_col}")
-    ax.legend(title="Quadrant (count)", loc="best", fontsize=8)
-    st.pyplot(fig)
-
-    # Layman summary
-    summary = "\n".join([
-        f"> **{label}**: {counts[label]} records"
-        for label in labels
-    ])
+    # Summarize counts
+    counts = data["Quadrant"].value_counts().reindex(
+        ["Q1: high/high","Q2: low/high","Q3: low/low","Q4: high/low"], fill_value=0
+    )
+    summary = "\n".join(f"> **{quad}**: {cnt} records" for quad, cnt in counts.items())
     st.markdown(f"**Quadrant counts:**\n\n{summary}")
 
 # ---- HISTOGRAM + KDE ----
