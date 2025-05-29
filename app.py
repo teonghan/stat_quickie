@@ -6,6 +6,8 @@ from scipy.stats import gaussian_kde
 import plotly.graph_objects as go
 import plotly.express as px  # new import for interactive ECDFs
 import matplotlib.colors as mcolors
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import r2_score, mean_squared_error
 
 st.set_page_config(page_title="Basic Stats Explorer", layout="wide")
 
@@ -67,6 +69,65 @@ def render_layman_summary(df, num_cols, cat_cols, dt_cols):
         days = (end - start).days
         st.write(f"> **{col}** — From **{start}** to **{end}**, spanning **{days} days**")
 
+# ---- REGRESSION ----
+def render_regression(df, num_cols):
+    st.header("📈 Regression Analysis")
+
+    # 1) Pick target & predictors
+    y_col = st.sidebar.selectbox("Choose target (predict)", num_cols, key="reg_y")
+    x_cols = st.sidebar.multiselect(
+        "Choose predictors (features)", 
+        [c for c in num_cols if c != y_col],
+        key="reg_x"
+    )
+    if not x_cols:
+        st.info("Select at least one predictor to run regression.")
+        return
+
+    # 2) Check multicollinearity among predictors
+    corr_preds = df[x_cols].corr().abs()
+    high_corr = [
+        (i, j, corr_preds.loc[i,j])
+        for i in x_cols for j in x_cols if i < j and corr_preds.loc[i,j] > 0.8
+    ]
+    if high_corr:
+        st.warning("High multicollinearity detected among predictors:")
+        for i,j,ρ in high_corr:
+            st.write(f"- **{i}** & **{j}**: ρ = {ρ:.2f}")
+
+    # 3) Fit model
+    data = df[[y_col] + x_cols].dropna()
+    X = data[x_cols].values
+    y = data[y_col].values
+    model = LinearRegression().fit(X, y)
+    preds = model.predict(X)
+
+    # 4) Compute metrics
+    r2 = r2_score(y, preds)
+    rmse = mean_squared_error(y, preds, squared=False)
+
+    # 5) Show formula
+    terms = [f"{coef:.3f}·{name}" for coef, name in zip(model.coef_, x_cols)]
+    formula = f"{y_col} ≈ {model.intercept_:.3f} + " + " + ".join(terms)
+    st.subheader("Model Formula")
+    st.code(formula, language="text")
+
+    # 6) Layman model quality
+    if r2 >= 0.75:
+        quality, advice = "strong", "This model explains most of the variation."
+    elif r2 >= 0.5:
+        quality, advice = "moderate", "This model captures some variation but could improve."
+    else:
+        quality, advice = "weak", "This model explains only a small part of the variation."
+
+    st.write(f"**R² = {r2:.3f}** ({quality} fit)    **RMSE = {rmse:.3f}**")
+    st.markdown(f"""
+> **What this means:**  
+> - The model explains about **{r2*100:.1f}%** of the variance in **{y_col}**.  
+> - Coefficients tell you how **{y_col}** changes per unit of each predictor.  
+> - {advice}
+    """)
+    
 # ---- QUADRANT BABY! ----
 def render_quadrant_analysis(df, num_cols):
     # Sidebar selectors
@@ -417,6 +478,7 @@ def main():
     show_corr = st.sidebar.checkbox("Correlation Matrix", False)
     show_outliers = st.sidebar.checkbox("Outlier Detection", False)
     show_quad = st.sidebar.checkbox("Quadrant Analysis", False)
+    show_reg = st.sidebar.checkbox("Regression Analysis", False)
 
     # Section 1: Data structure
     if show_structure:
@@ -484,7 +546,26 @@ def main():
             render_quadrant_analysis(df, num_cols)
         except Exception as e:
             st.error(f"Error in quadrant analysis: {e}")
+    
+    # 7) Diagnostics
+    if show_reg:
+        # Residuals vs. Predicted
+        residuals = y - preds
+        fig, ax = plt.subplots()
+        ax.scatter(preds, residuals, alpha=0.6, edgecolor='k')
+        ax.axhline(0, color='gray', linestyle='--')
+        ax.set_xlabel("Predicted values")
+        ax.set_ylabel("Residuals")
+        ax.set_title("Residuals vs. Predicted")
+        st.pyplot(fig)
 
+        # Residuals histogram
+        fig2, ax2 = plt.subplots()
+        ax2.hist(residuals, bins=15, edgecolor='black', alpha=0.7)
+        ax2.set_title("Residuals Distribution")
+        ax2.set_xlabel("Residual")
+        ax2.set_ylabel("Count")
+        st.pyplot(fig2)
 
 if __name__ == "__main__":
     main()
