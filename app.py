@@ -547,25 +547,12 @@ def main():
         except Exception as e:
             st.error(f"Error in quadrant analysis: {e}")
     
-    # 7) Diagnostics
+    # Section 7: Regression
     if show_reg:
-        # Residuals vs. Predicted
-        residuals = y - preds
-        fig, ax = plt.subplots()
-        ax.scatter(preds, residuals, alpha=0.6, edgecolor='k')
-        ax.axhline(0, color='gray', linestyle='--')
-        ax.set_xlabel("Predicted values")
-        ax.set_ylabel("Residuals")
-        ax.set_title("Residuals vs. Predicted")
-        st.pyplot(fig)
-
-        # Residuals histogram
-        fig2, ax2 = plt.subplots()
-        ax2.hist(residuals, bins=15, edgecolor='black', alpha=0.7)
-        ax2.set_title("Residuals Distribution")
-        ax2.set_xlabel("Residual")
-        ax2.set_ylabel("Count")
-        st.pyplot(fig2)
+        try:
+            render_regression(df, num_cols)
+        except Exception as e:
+            st.error(f"Error running regression: {e}")
 
 if __name__ == "__main__":
     main()
