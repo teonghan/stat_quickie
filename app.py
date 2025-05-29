@@ -295,6 +295,45 @@ def render_correlation(df, num_cols):
 
     st.pyplot(fig)
 
+# ---- Outlier Detection ----
+def render_outliers(df, num_cols):
+    """
+    For each numeric column, detect values outside 1.5 × IQR and report counts & percentages.
+    """
+    st.header("🚩 Outlier Detection")
+    summary = []
+    for col in num_cols:
+        data = df[col].dropna()
+        if data.empty:
+            continue
+        q1, q3 = np.percentile(data, [25, 75])
+        iqr = q3 - q1
+        lower, upper = q1 - 1.5 * iqr, q3 + 1.5 * iqr
+
+        out_low = data[data < lower]
+        out_high = data[data > upper]
+        n = len(data)
+        n_low, n_high = len(out_low), len(out_high)
+        pct_low = n_low / n * 100
+        pct_high = n_high / n * 100
+
+        summary.append({
+            "Column": col,
+            "Total": n,
+            "Low outliers": f"{n_low} ({pct_low:.1f}%)",
+            "High outliers": f"{n_high} ({pct_high:.1f}%)",
+            "Lower cutoff": f"{lower:.1f}",
+            "Upper cutoff": f"{upper:.1f}"
+        })
+
+    if not summary:
+        st.write("No numeric columns to analyze.")
+        return
+
+    # Display as a table
+    out_df = pd.DataFrame(summary)
+    st.dataframe(out_df)
+
 # ---- MAIN APP ----
 def main():
     st.title("Basic Stats Explorer")
@@ -318,6 +357,7 @@ def main():
     show_details = st.sidebar.checkbox("Detailed Stats & Charts", False)
     show_ecdf = st.sidebar.checkbox("ECDF Plots", False)
     show_corr = st.sidebar.checkbox("Correlation Matrix", False)
+    show_outliers = st.sidebar.checkbox("Outlier Detection", False)
 
     # Section 1: Data structure
     if show_structure:
@@ -370,6 +410,13 @@ def main():
             render_correlation(df, num_cols)
         except Exception as e:
             st.error(f"Error plotting correlation matrix: {e}")
+
+    # Section X: Outlier Detection
+    if show_outliers:
+        try:
+            render_outliers(df, num_cols)
+        except Exception as e:
+            st.error(f"Error detecting outliers: {e}")
 
 if __name__ == "__main__":
     main()
