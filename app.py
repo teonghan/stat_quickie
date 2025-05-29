@@ -536,7 +536,33 @@ def render_outliers(df, num_cols):
 
 # ---- MAIN APP ----
 def main():
-    st.title("Basic Stats Explorer")
+    st.title("🔎 Data Detective: Basic Stats Explorer")
+
+    # ——— Fun Introduction ———
+    st.markdown("""
+    Welcome aboard the **Data Detective**! 🕵️‍♂️🔍  
+
+    Imagine having a trusty sidekick who instantly sifts, summarizes, and visualizes **any** dataset you throw at it—no PhD in statistics required. Whether you’re:
+
+    - Curious about how values cluster (histograms & KDE)  
+    - Wanting to spot outliers at a glance (box plots)  
+    - Eager to know exactly what proportion falls below a threshold (ECDF)  
+    - Looking to compare two groups (t-test)  
+    - Ready to dive into simple predictions (linear regression)  
+    - Or even slice & dice with quadrant analysis…
+
+    …this app has your back.  
+
+    **How to get started:**  
+    1. **Upload** your CSV/Excel file.  
+    2. **Toggle** the analyses you want in the sidebar.  
+    3. **Customize** any settings in the collapsible panels—no confusing stats jargon here.  
+    4. **Explore** interactive charts, hover for details, and read plain-English insights.  
+
+    Let’s turn your raw numbers into “aha!” moments—dive in and have fun with your data! 🚀📊
+    """)
+    st.write("---")
+    
     uploaded = st.file_uploader("Upload your CSV or Excel file", type=["csv", "xlsx"])
     if not uploaded:
         st.info("Please upload a file to get started.")
