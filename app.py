@@ -8,6 +8,7 @@ import plotly.express as px  # new import for interactive ECDFs
 import matplotlib.colors as mcolors
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score, mean_squared_error
+from scipy.stats import ttest_ind
 
 st.set_page_config(page_title="Basic Stats Explorer", layout="wide")
 
@@ -68,6 +69,53 @@ def render_layman_summary(df, num_cols, cat_cols, dt_cols):
         start, end = dates.min().date(), dates.max().date()
         days = (end - start).days
         st.write(f"> **{col}** — From **{start}** to **{end}**, spanning **{days} days**")
+        
+# ---- T TEST ----
+def render_ttest(df, num_cols, cat_cols):
+    """
+    Renders a two-sample t-test for any binary categorical column vs. a numeric column.
+    """
+    st.header("⚖️ Two-Group Comparison (T-Test)")
+
+    # 1) Pick the binary category and numeric column
+    cat = st.selectbox("Choose a categorical column (exactly 2 levels)", cat_cols, key="ttest_cat")
+    num = st.selectbox("Choose a numeric column to compare", num_cols, key="ttest_num")
+
+    # 2) Check levels
+    levels = df[cat].dropna().unique()
+    if len(levels) != 2:
+        st.error(f"Column **{cat}** has {len(levels)} levels; please pick one with exactly 2 groups.")
+        return
+
+    # 3) Extract the two samples
+    grp1 = df.loc[df[cat] == levels[0], num].dropna()
+    grp2 = df.loc[df[cat] == levels[1], num].dropna()
+
+    # Guard against too-small samples
+    if len(grp1) < 2 or len(grp2) < 2:
+        st.error("Each group needs at least 2 observations.")
+        return
+
+    # 4) Run Welch’s t-test
+    tstat, pval = ttest_ind(grp1, grp2, equal_var=False)
+
+    # 5) Show results
+    st.subheader("T-Test Results")
+    st.write(f"- Comparing **{levels[0]}** vs **{levels[1]}** on **{num}**")
+    st.write(f"- t-statistic = {tstat:.2f}")
+    st.write(f"- p-value = {pval:.3f}")
+
+    # 6) Layman interpretation
+    sig = "a statistically significant" if pval < 0.05 else "no statistically significant"
+    st.markdown(f"""
+    > **Interpretation:**  
+    > There is **{sig}** difference in the mean **{num}** between **{levels[0]}** and **{levels[1]}** (p = {pval:.3f}).
+    """)
+
+    # Optional: show group means
+    mean1, mean2 = grp1.mean(), grp2.mean()
+    st.write(f"- Mean of **{levels[0]}** = {mean1:.2f}")
+    st.write(f"- Mean of **{levels[1]}** = {mean2:.2f}")
 
 # ---- REGRESSION ----
 def render_regression(df, num_cols):
@@ -512,6 +560,7 @@ def main():
     show_outliers = st.sidebar.checkbox("Outlier Detection", False)
     show_quad = st.sidebar.checkbox("Quadrant Analysis", False)
     show_reg = st.sidebar.checkbox("Regression Analysis", False)
+    show_ttest = st.sidebar.checkbox("Two-Group Comparison (T-Test)", False)
 
     # Section 1: Data structure
     if show_structure:
@@ -586,6 +635,10 @@ def main():
             render_regression(df, num_cols)
         except Exception as e:
             st.error(f"Error running regression: {e}")
+
+    # Section 8: Mr T!
+    if show_ttest:
+        render_ttest(df, num_cols, cat_cols)
 
 if __name__ == "__main__":
     main()
