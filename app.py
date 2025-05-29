@@ -84,53 +84,82 @@ def render_regression(df, num_cols):
         st.info("Select at least one predictor to run regression.")
         return
 
-    # 2) Check multicollinearity among predictors
+    # 2) Multicollinearity check
     corr_preds = df[x_cols].corr().abs()
     high_corr = [
         (i, j, corr_preds.loc[i,j])
         for i in x_cols for j in x_cols if i < j and corr_preds.loc[i,j] > 0.8
     ]
     if high_corr:
-        st.warning("High multicollinearity detected among predictors:")
-        for i,j,ρ in high_corr:
-            st.write(f"- **{i}** & **{j}**: ρ = {ρ:.2f}")
+        st.warning("⚠️ High multicollinearity detected among predictors:")
+        for i, j, rho in high_corr:
+            st.write(f"- **{i}** & **{j}**: ρ = {rho:.2f}")
 
-    # 3) Fit model
+    # 3) Prepare data & fit model
     data = df[[y_col] + x_cols].dropna()
     X = data[x_cols].values
     y = data[y_col].values
     model = LinearRegression().fit(X, y)
     preds = model.predict(X)
 
-    # 4) Compute metrics
+    # 4) Metrics
     r2 = r2_score(y, preds)
-    # rmse = mean_squared_error(y, preds, squared=False)
-
-    # do this:
     mse = mean_squared_error(y, preds)
     rmse = np.sqrt(mse)
 
     # 5) Show formula
     terms = [f"{coef:.3f}·{name}" for coef, name in zip(model.coef_, x_cols)]
-    formula = f"{y_col} ≈ {model.intercept_:.3f} + " + " + ".join(terms)
+    formula = f"{y_col} ≈ {model.intercept_:.3f}"
+    if terms:
+        formula += " + " + " + ".join(terms)
     st.subheader("Model Formula")
     st.code(formula, language="text")
 
     # 6) Layman model quality
     if r2 >= 0.75:
-        quality, advice = "strong", "This model explains most of the variation."
+        quality, advice = "strong", "explains most of the variation"
     elif r2 >= 0.5:
-        quality, advice = "moderate", "This model captures some variation but could improve."
+        quality, advice = "moderate", "captures some variation but could improve"
     else:
-        quality, advice = "weak", "This model explains only a small part of the variation."
+        quality, advice = "weak", "explains only a small part of the variation"
 
-    st.write(f"**R² = {r2:.3f}** ({quality} fit)    **RMSE = {rmse:.3f}**")
+    # 7) Unit inference (simple heuristic)
+    # You can extend this mapping as needed
+    unit_map = {
+        'Score': 'points',
+        'Hours': 'hours',
+        'Time': 'units',
+    }
+    # default to the raw column name if no match
+    unit = next((u for k, u in unit_map.items() if k.lower() in y_col.lower()), y_col)
+
+    st.write(f"**R² = {r2:.3f}** ({quality} fit)    **RMSE = {rmse:.3f} {unit}**")
     st.markdown(f"""
 > **What this means:**  
 > - The model explains about **{r2*100:.1f}%** of the variance in **{y_col}**.  
-> - Coefficients tell you how **{y_col}** changes per unit of each predictor.  
-> - {advice}
+> - On average, predictions are off by about **{rmse:.1f} {unit}** (the RMSE).  
+> - {advice.capitalize()}.
     """)
+
+    # 8) Diagnostics toggle
+    if st.sidebar.checkbox("Show diagnostics", key="reg_diag"):
+        # Residuals vs. Predicted
+        residuals = y - preds
+        fig1, ax1 = plt.subplots()
+        ax1.scatter(preds, residuals, alpha=0.6, edgecolor='k')
+        ax1.axhline(0, color='gray', linestyle='--')
+        ax1.set_xlabel("Predicted values")
+        ax1.set_ylabel("Residuals")
+        ax1.set_title("Residuals vs. Predicted")
+        st.pyplot(fig1)
+
+        # Residuals histogram
+        fig2, ax2 = plt.subplots()
+        ax2.hist(residuals, bins=15, edgecolor='black', alpha=0.7)
+        ax2.set_title("Residuals Distribution")
+        ax2.set_xlabel("Residual")
+        ax2.set_ylabel("Count")
+        st.pyplot(fig2)
     
 # ---- QUADRANT BABY! ----
 def render_quadrant_analysis(df, num_cols):
