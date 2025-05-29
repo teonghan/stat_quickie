@@ -100,8 +100,11 @@ def render_quadrant_analysis(df, num_cols):
     x = data[x_col]
     y = data[y_col]
 
-    # Assign quadrant: 
-    # Q1: x > thresh_x & y > thresh_y, Q2: x <= thresh_x & y > thresh_y, etc.
+    # Scatter & quadrant assignment
+    data = df[[x_col, y_col]].dropna()
+    x = data[x_col]
+    y = data[y_col]
+
     conditions = [
         (x > x_thresh) & (y > y_thresh),
         (x <= x_thresh) & (y > y_thresh),
@@ -109,28 +112,29 @@ def render_quadrant_analysis(df, num_cols):
         (x > x_thresh) & (y <= y_thresh),
     ]
     labels = ["Q1: high/high", "Q2: low/high", "Q3: low/low", "Q4: high/low"]
-    quad = np.select(conditions, labels)
 
-    # Count per quadrant
-    counts = pd.Series(quad).value_counts().reindex(labels, fill_value=0)
+    # === Fix here ===
+    quad = np.select(conditions, labels, default="").astype(object)
+    quad_series = pd.Series(quad)
+    counts = quad_series[quad_series != ""].value_counts().reindex(labels, fill_value=0)
+    # ================
 
     # Plot
     fig, ax = plt.subplots()
     cmap = list(mcolors.TABLEAU_COLORS.values())
     for i, label in enumerate(labels):
         subset = data[quad == label]
-        ax.scatter(subset[x_col], subset[y_col],
-                   label=f"{label} ({counts[label]})",
-                   color=cmap[i], alpha=0.7, edgecolor="k", s=50)
-    # Draw chop lines
+        ax.scatter(
+            subset[x_col], subset[y_col],
+            label=f"{label} ({counts[label]})",
+            color=cmap[i], alpha=0.7, edgecolor="k", s=50
+        )
     ax.axvline(x_thresh, color="gray", linestyle="--")
     ax.axhline(y_thresh, color="gray", linestyle="--")
-
     ax.set_xlabel(x_col)
     ax.set_ylabel(y_col)
     ax.set_title(f"Quadrant Analysis: {x_col} vs {y_col}")
     ax.legend(title="Quadrant (count)", loc="best", fontsize=8)
-
     st.pyplot(fig)
 
     # Layman summary
