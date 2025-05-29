@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import gaussian_kde
 import plotly.graph_objects as go
 import plotly.express as px  # new import for interactive ECDFs
+import matplotlib.colors as mcolors
 
 st.set_page_config(page_title="Basic Stats Explorer", layout="wide")
 
@@ -65,6 +66,79 @@ def render_layman_summary(df, num_cols, cat_cols, dt_cols):
         start, end = dates.min().date(), dates.max().date()
         days = (end - start).days
         st.write(f"> **{col}** — From **{start}** to **{end}**, spanning **{days} days**")
+
+# ---- QUADRANT BABY! ----
+def render_quadrant_analysis(df, num_cols):
+    # Select the two axes
+    x_col = st.sidebar.selectbox("Choose X-axis", num_cols, key="quad_x")
+    y_col = st.sidebar.selectbox("Choose Y-axis", num_cols, key="quad_y")
+
+    st.sidebar.markdown("---")
+    st.sidebar.write("**Cut points for quadrants**")
+
+    chop_opts = ["Mean", "Median", "Custom"]
+    x_method = st.sidebar.selectbox(f"{x_col} chop at", chop_opts, key="quad_x_method")
+    y_method = st.sidebar.selectbox(f"{y_col} chop at", chop_opts, key="quad_y_method")
+
+    # Determine thresholds
+    if x_method == "Mean":
+        x_thresh = df[x_col].mean()
+    elif x_method == "Median":
+        x_thresh = df[x_col].median()
+    else:
+        x_thresh = st.sidebar.number_input(f"{x_col} custom threshold", value=float(df[x_col].mean()))
+
+    if y_method == "Mean":
+        y_thresh = df[y_col].mean()
+    elif y_method == "Median":
+        y_thresh = df[y_col].median()
+    else:
+        y_thresh = st.sidebar.number_input(f"{y_col} custom threshold", value=float(df[y_col].mean()))
+
+    # Scatter & quadrant assignment
+    data = df[[x_col, y_col]].dropna()
+    x = data[x_col]
+    y = data[y_col]
+
+    # Assign quadrant: 
+    # Q1: x > thresh_x & y > thresh_y, Q2: x <= thresh_x & y > thresh_y, etc.
+    conditions = [
+        (x > x_thresh) & (y > y_thresh),
+        (x <= x_thresh) & (y > y_thresh),
+        (x <= x_thresh) & (y <= y_thresh),
+        (x > x_thresh) & (y <= y_thresh),
+    ]
+    labels = ["Q1: high/high", "Q2: low/high", "Q3: low/low", "Q4: high/low"]
+    quad = np.select(conditions, labels)
+
+    # Count per quadrant
+    counts = pd.Series(quad).value_counts().reindex(labels, fill_value=0)
+
+    # Plot
+    fig, ax = plt.subplots()
+    cmap = list(mcolors.TABLEAU_COLORS.values())
+    for i, label in enumerate(labels):
+        subset = data[quad == label]
+        ax.scatter(subset[x_col], subset[y_col],
+                   label=f"{label} ({counts[label]})",
+                   color=cmap[i], alpha=0.7, edgecolor="k", s=50)
+    # Draw chop lines
+    ax.axvline(x_thresh, color="gray", linestyle="--")
+    ax.axhline(y_thresh, color="gray", linestyle="--")
+
+    ax.set_xlabel(x_col)
+    ax.set_ylabel(y_col)
+    ax.set_title(f"Quadrant Analysis: {x_col} vs {y_col}")
+    ax.legend(title="Quadrant (count)", loc="best", fontsize=8)
+
+    st.pyplot(fig)
+
+    # Layman summary
+    summary = "\n".join([
+        f"> **{label}**: {counts[label]} records"
+        for label in labels
+    ])
+    st.markdown(f"**Quadrant counts:**\n\n{summary}")
 
 # ---- HISTOGRAM + KDE ----
 def render_histogram_with_kde(df, col):
@@ -358,6 +432,7 @@ def main():
     show_ecdf = st.sidebar.checkbox("ECDF Plots", False)
     show_corr = st.sidebar.checkbox("Correlation Matrix", False)
     show_outliers = st.sidebar.checkbox("Outlier Detection", False)
+    show_quad = st.sidebar.checkbox("Quadrant Analysis", False)
 
     # Section 1: Data structure
     if show_structure:
@@ -417,6 +492,15 @@ def main():
             render_outliers(df, num_cols)
         except Exception as e:
             st.error(f"Error detecting outliers: {e}")
+
+    # Section X: Quadrant
+    if show_quad:
+        st.header("�four_leaf_clover Quadrant Analysis")
+        try:
+            render_quadrant_analysis(df, num_cols)
+        except Exception as e:
+            st.error(f"Error in quadrant analysis: {e}")
+
 
 if __name__ == "__main__":
     main()
