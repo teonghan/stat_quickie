@@ -46,16 +46,6 @@ streamlit run app.py
 
 ---
 
-## 📸 Preview (Add your screenshots!)
-
-| Upload UI | Summary View |
-|-----------|--------------|
-| ![upload](screenshots/upload.png) | ![summary](screenshots/summary.png) |
-
-> 💡 Tip: Add a few screenshots under a `screenshots/` folder to show off the app in action.
-
----
-
 ## 🎯 Why Use StatQuickie?
 
 Because not everyone has time to write Python scripts or decipher p-values.  
@@ -81,4 +71,6 @@ MIT License — do what you want, just don’t blame us if your boss loves it to
 
 ---
 
-> Built with ❤️ and a touch of statistical mischief.
+## 🙌 Acknowledgements
+
+- Thanks to [OpenAI's ChatGPT](https://chat.openai.com/) for helping brainstorm, draft, and polish this README and for making documentation (and coding) more fun, productive, and typo-free.
