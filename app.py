@@ -69,7 +69,7 @@ def render_layman_summary(df, num_cols, cat_cols, dt_cols):
         start, end = dates.min().date(), dates.max().date()
         days = (end - start).days
         st.write(f"> **{col}** — From **{start}** to **{end}**, spanning **{days} days**")
-        
+
 # ---- T TEST ----
 def render_ttest(df, num_cols, cat_cols):
     """
@@ -108,8 +108,7 @@ def render_ttest(df, num_cols, cat_cols):
     # 6) Layman interpretation
     sig = "a statistically significant" if pval < 0.05 else "no statistically significant"
     st.markdown(f"""
-    > **Interpretation:**  
-    > There is **{sig}** difference in the mean **{num}** between **{levels[0]}** and **{levels[1]}** (p = {pval:.3f}).
+    > **Interpretation:** > There is **{sig}** difference in the mean **{num}** between **{levels[0]}** and **{levels[1]}** (p = {pval:.3f}).
     """)
 
     # Optional: show group means
@@ -124,7 +123,7 @@ def render_regression(df, num_cols):
     # 1) Pick target & predictors
     y_col = st.sidebar.selectbox("Choose target (predict)", num_cols, key="reg_y")
     x_cols = st.sidebar.multiselect(
-        "Choose predictors (features)", 
+        "Choose predictors (features)",
         [c for c in num_cols if c != y_col],
         key="reg_x"
     )
@@ -183,9 +182,8 @@ def render_regression(df, num_cols):
 
     st.write(f"**R² = {r2:.3f}** ({quality} fit)    **RMSE = {rmse:.3f} {unit}**")
     st.markdown(f"""
-> **What this means:**  
-> - The model explains about **{r2*100:.1f}%** of the variance in **{y_col}**.  
-> - On average, predictions are off by about **{rmse:.1f} {unit}** (the RMSE).  
+> **What this means:** > - The model explains about **{r2*100:.1f}%** of the variance in **{y_col}**.
+> - On average, predictions are off by about **{rmse:.1f} {unit}** (the RMSE).
 > - {advice.capitalize()}.
     """)
 
@@ -208,9 +206,9 @@ def render_regression(df, num_cols):
         ax2.set_xlabel("Residual")
         ax2.set_ylabel("Count")
         st.pyplot(fig2)
-    
+
 # ---- QUADRANT BABY! ----
-def render_quadrant_analysis(df, num_cols):
+def render_quadrant_analysis(df, num_cols, all_cols):
     # Sidebar selectors
     x_col = st.sidebar.selectbox("Choose X-axis", num_cols, key="quad_x")
     y_col = st.sidebar.selectbox("Choose Y-axis", num_cols, key="quad_y")
@@ -219,6 +217,13 @@ def render_quadrant_analysis(df, num_cols):
     chop_opts = ["Mean", "Median", "Custom"]
     x_method = st.sidebar.selectbox(f"{x_col} chop at", chop_opts, key="quad_x_method")
     y_method = st.sidebar.selectbox(f"{y_col} chop at", chop_opts, key="quad_y_method")
+
+    # Allow user to select a column for hover labels
+    label_col = st.selectbox(
+        f"Select a column to use as label for data points in this quadrant chart (optional)",
+        ['None'] + [c for c in all_cols if c != x_col and c != y_col],
+        key=f"quad_label_{x_col}_{y_col}"
+    )
 
     # Determine thresholds
     def get_thresh(col, method):
@@ -232,7 +237,19 @@ def render_quadrant_analysis(df, num_cols):
     y_thresh = get_thresh(y_col, y_method)
 
     # Prepare data
-    data = df[[x_col, y_col]].dropna().copy()
+    columns_to_include = [x_col, y_col]
+    hover_data_dict = {x_col: True, y_col: True, "Quadrant": True}
+
+    if label_col != 'None':
+        if label_col in df.columns:
+            columns_to_include.append(label_col)
+            hover_data_dict[label_col] = True
+        else:
+            st.warning(f"Selected label column '{label_col}' not found in data. It will not be shown in hover.")
+            label_col = 'None' # Revert to None if column is invalid
+
+    data = df[columns_to_include].dropna(subset=[x_col, y_col]).copy()
+
     # Assign quadrants
     def quad_label(r):
         if   r[x_col] > x_thresh and r[y_col] > y_thresh: return "Q1: high/high"
@@ -247,7 +264,7 @@ def render_quadrant_analysis(df, num_cols):
         title=f"🍀 Quadrant Analysis: {x_col} vs {y_col}",
         labels={x_col: x_col, y_col: y_col},
         symbol="Quadrant", # different symbols per quadrant if desired
-        hover_data={x_col: True, y_col: True, "Quadrant": True}
+        hover_data=hover_data_dict
     )
     # Add chop lines
     fig.add_shape(dict(type="line", x0=x_thresh, x1=x_thresh, y0=data[y_col].min(),
@@ -268,14 +285,13 @@ def render_quadrant_analysis(df, num_cols):
 
 # ---- HISTOGRAM + KDE ----
 def render_histogram_with_kde(df, col):
-    
+
     # Generic histogram + KDE explanation
     st.markdown(
         """
-        **How to use this chart:**  
-        - Bars show how many records fall into each value range.  
-        - The smooth curve overlays the overall “shape” of the distribution.  
-        - The tallest bar (or highest peak) marks the most common range of values.  
+        **How to use this chart:** - Bars show how many records fall into each value range.
+        - The smooth curve overlays the overall “shape” of the distribution.
+        - The tallest bar (or highest peak) marks the most common range of values.
         - Long tails indicate that a few records lie far from the bulk of the data.
         """
     )
@@ -361,14 +377,13 @@ def render_histogram_with_kde(df, col):
 
 
 # ---- BOX PLOT + EXPLANATION (Plotly) ----
-def render_boxplot(df, col):
+def render_boxplot(df, col, all_cols):
     # Generic box-plot explanation
     st.markdown(
         """
-        **How to use this chart:**  
-        - The center line of the box is the median (middle) value.  
-        - The box edges are the 25th and 75th percentiles (middle 50% of records).  
-        - “Whiskers” extend to the typical minimum and maximum; dots beyond them are outliers.  
+        **How to use this chart:** - The center line of the box is the median (middle) value.
+        - The box edges are the 25th and 75th percentiles (middle 50% of records).
+        - “Whiskers” extend to the typical minimum and maximum; dots beyond them are outliers.
         - Use this to see at a glance the typical range, the middle point, and any extreme values.
         """
     )
@@ -377,13 +392,35 @@ def render_boxplot(df, col):
     if data.empty:
         return
 
+    # Allow user to select a column for outlier labels
+    label_col = st.selectbox(
+        f"Select a column to use as label for outliers in '{col}' box plot (optional)",
+        ['None'] + [c for c in all_cols if c != col],
+        key=f"boxplot_label_{col}"
+    )
+
+    # Prepare data for Plotly Express
+    plot_df = df[[col]].dropna().copy()
+    hover_data_dict = {col: True} # Always include the main column in hover
+
+    if label_col != 'None':
+        if label_col in df.columns:
+            # Ensure the label column is available and add it to plot_df for px.box
+            plot_df = df[[col, label_col]].dropna(subset=[col]).copy()
+            hover_data_dict[label_col] = True # Add the selected label column to hover data
+        else:
+            st.warning(f"Selected label column '{label_col}' not found in data or has missing values corresponding to '{col}'. Outlier labels will not be shown.")
+            label_col = 'None' # Revert to None if column is invalid
+
+
     # Build interactive horizontal box plot
     fig = px.box(
-        data_frame=data.to_frame(name=col),
+        data_frame=plot_df,
         x=col,               # map to x for horizontal orientation
         points="outliers",   # show outlier points
         title=f"Box Plot — {col}",
-        labels={col: col}
+        labels={col: col},
+        hover_data=hover_data_dict # Use the dynamically created hover_data_dict
     )
 
     # Make the box narrower
@@ -395,9 +432,19 @@ def render_boxplot(df, col):
             "Q1: %{q1}<br>"
             "Q3: %{q3}<br>"
             "Lower whisker: %{lowerfence}<br>"
-            "Upper whisker: %{upperfence}"
+            "Upper whisker: %{upperfence}" +
+            (f"<br>{label_col}: %{{customdata[0]}}" if label_col != 'None' else "") # Add customdata for label
         )
     )
+
+    # If label_col is selected, add customdata
+    if label_col != 'None':
+        # Ensure that customdata contains the values from the label_col for outlier points.
+        # Plotly Express automatically handles customdata for 'points="outliers"'
+        # if the column is included in the data_frame and hover_data.
+        pass
+
+
     fig.update_layout(margin=dict(t=40, b=20, l=20, r=20))
 
     st.plotly_chart(fig, use_container_width=True)
@@ -423,10 +470,9 @@ def render_ecdf(df, col):
     # Generic ECDF explanation
     st.markdown(
         """
-        **How to use this chart:**  
-        - The curve shows what fraction of records are at or below each x-value.  
-        - To find any percentile (e.g. 0.75), hover until the y-axis reads that fraction.  
-        - Steep sections mean many records share similar values; flat sections mean gaps.  
+        **How to use this chart:** - The curve shows what fraction of records are at or below each x-value.
+        - To find any percentile (e.g. 0.75), hover until the y-axis reads that fraction.
+        - Steep sections mean many records share similar values; flat sections mean gaps.
         - ECDFs are great for reading exact percentiles and comparing distributions.
         """
     )
@@ -443,7 +489,7 @@ def render_ecdf(df, col):
         labels={col: col, "ecdf": "Proportion ≤ x"},
     )
     fig.update_traces(
-        hovertemplate=f"{col}: %{{x:.1f}}<br>Proportion: %{{y:.2f}}"
+        hovertemplate=f"{col}: %{{x:.1f}}<br>Proportion: %{{y:.2f}}" # Corrected: escaped curly braces
     )
     fig.update_layout(
         xaxis_title=col,
@@ -463,7 +509,7 @@ def render_ecdf(df, col):
     )
     st.write(explanation)
 
-# ---- CORRELATION MATRIX WITH R² ----
+# ---- CORRELATION MATRIX WITH R² (Plotly Heatmap) ----
 def render_correlation(df, num_cols):
     if len(num_cols) < 2:
         st.info("Need at least two numeric columns for correlation matrix.")
@@ -473,27 +519,49 @@ def render_correlation(df, num_cols):
     corr = df[num_cols].corr()
     r2 = corr**2
 
-    fig, ax = plt.subplots(figsize=(6, 6))
-    cax = ax.matshow(corr, vmin=-1, vmax=1, cmap="coolwarm")
-    fig.colorbar(cax, ax=ax)
-
-    # Set tick labels
-    ax.set_xticks(range(len(num_cols)))
-    ax.set_xticklabels(num_cols, rotation=90)
-    ax.set_yticks(range(len(num_cols)))
-    ax.set_yticklabels(num_cols)
-
-    # Annotate each cell with “ρ=…\nR²=…”
-    for i in range(len(num_cols)):
-        for j in range(len(num_cols)):
+    # Create annotation text for hover and inside cells
+    annotations = []
+    for i, col1 in enumerate(num_cols):
+        for j, col2 in enumerate(num_cols):
             if i == j:
-                # perfect correlation on diagonal
-                text = f"ρ=1.00\nR²=1.00"
+                text = f"ρ=1.00<br>R²=1.00"
             else:
-                text = f"ρ={corr.iloc[i,j]:.2f}\nR²={r2.iloc[i,j]:.2f}"
-            ax.text(j, i, text, ha="center", va="center", color="white", fontsize=8)
+                text = f"ρ={corr.iloc[i,j]:.2f}<br>R²={r2.iloc[i,j]:.2f}"
+            annotations.append(
+                dict(
+                    x=col2,
+                    y=col1,
+                    text=text,
+                    showarrow=False,
+                    font=dict(color="white", size=10) # Adjust font size if needed
+                )
+            )
 
-    st.pyplot(fig)
+    fig = go.Figure(data=go.Heatmap(
+        z=corr.values,
+        x=num_cols,
+        y=num_cols,
+        colorscale='RdBu',  # 'RdBu' for divergent scale, 'Viridis' or 'Plasma' for sequential
+        zmin=-1,
+        zmax=1,
+        colorbar=dict(title="Correlation (ρ)"),
+        hovertemplate="X: %{x}<br>Y: %{y}<br>ρ: %{z:.2f}<extra></extra>"
+    ))
+
+    fig.update_layout(
+        title="🔗 Correlation Matrix (Pearson's ρ & R²)",
+        xaxis_title="",
+        yaxis_title="",
+        xaxis=dict(tickangle=90),
+        yaxis=dict(autorange="reversed"), # To make y-axis order match dataframe
+        annotations=annotations,
+        margin=dict(t=50, b=100, l=100, r=50), # Adjust margins for labels and colorbar
+        height=len(num_cols) * 50 + 200, # Dynamic height based on number of columns
+        width=len(num_cols) * 50 + 200
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
 
 # ---- Outlier Detection ----
 def render_outliers(df, num_cols):
@@ -540,29 +608,28 @@ def main():
 
     # ——— Fun Introduction ———
     st.markdown("""
-    Welcome aboard the **Data Detective**! 🕵️‍♂️🔍  
+    Welcome aboard the **Data Detective**! 🕵️‍♂️🔍
 
     Imagine having a trusty sidekick who instantly sifts, summarizes, and visualizes **any** dataset you throw at it—no PhD in statistics required. Whether you’re:
 
-    - Curious about how values cluster (histograms & KDE)  
-    - Wanting to spot outliers at a glance (box plots)  
-    - Eager to know exactly what proportion falls below a threshold (ECDF)  
-    - Looking to compare two groups (t-test)  
-    - Ready to dive into simple predictions (linear regression)  
+    - Curious about how values cluster (histograms & KDE)
+    - Wanting to spot outliers at a glance (box plots)
+    - Eager to know exactly what proportion falls below a threshold (ECDF)
+    - Looking to compare two groups (t-test)
+    - Ready to dive into simple predictions (linear regression)
     - Or even slice & dice with quadrant analysis…
 
-    …this app has your back.  
+    …this app has your back.
 
-    **How to get started:**  
-    1. **Upload** your CSV/Excel file.  
-    2. **Toggle** the analyses you want in the sidebar.  
-    3. **Customize** any settings in the collapsible panels—no confusing stats jargon here.  
-    4. **Explore** interactive charts, hover for details, and read plain-English insights.  
+    **How to get started:** 1. **Upload** your CSV/Excel file.
+    2. **Toggle** the analyses you want in the sidebar.
+    3. **Customize** any settings in the collapsible panels—no confusing stats jargon here.
+    4. **Explore** interactive charts, hover for details, and read plain-English insights.
 
     Let’s turn your raw numbers into “aha!” moments—dive in and have fun with your data! 🚀📊
     """)
     st.write("---")
-    
+
     uploaded = st.file_uploader("Upload your CSV or Excel file", type=["csv", "xlsx"])
     if not uploaded:
         st.info("Please upload a file to get started.")
@@ -575,6 +642,9 @@ def main():
         return
 
     num_cols, cat_cols, dt_cols = detect_columns(df)
+
+    # Get all column names for the label selection in box plot and quadrant chart
+    all_dataframe_cols = df.columns.tolist()
 
     # Sidebar toggles
     st.sidebar.header("Show Sections")
@@ -618,7 +688,8 @@ def main():
 
             st.subheader(f"Box Plot — {col}")
             try:
-                render_boxplot(df, col)
+                # Pass all_dataframe_cols to render_boxplot
+                render_boxplot(df, col, all_dataframe_cols)
             except Exception as e:
                 st.error(f"Error plotting boxplot for {col}: {e}")
 
@@ -651,10 +722,11 @@ def main():
     if show_quad:
         st.header("🍀 Quadrant Analysis")
         try:
-            render_quadrant_analysis(df, num_cols)
+            # Pass all_dataframe_cols to render_quadrant_analysis
+            render_quadrant_analysis(df, num_cols, all_dataframe_cols)
         except Exception as e:
             st.error(f"Error in quadrant analysis: {e}")
-    
+
     # Section 7: Regression
     if show_reg:
         try:
