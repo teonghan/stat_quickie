@@ -427,6 +427,98 @@ def render_quadrant_analysis(df, num_cols, all_dataframe_cols):
         st.write(f"- **High {col_x}, Low {col_y}:** Points here are above average for '{col_x}' but below average for '{col_y}'.")
 
 # ---- HISTOGRAM & KDE ----
+def render_histogram_with_kde_groupby(df, num_cols, cat_cols):
+    st.markdown(thick_line, unsafe_allow_html=True)
+    st.header("📊 Histogram & Density Plot")
+    st.markdown("This section visualizes the distribution of your numeric data using histograms and Kernel Density Estimates (KDE).")
+
+    if not num_cols:
+        st.info("No numeric columns found in your dataset to perform Histogram & Density Plot analysis.")
+        return
+
+    # User selects the numeric column for analysis
+    selected_col = st.selectbox("Select a numeric column for Histogram & Density Plot", num_cols, key=f"hist_col_select_{[num_cols][0]}")
+
+    if selected_col:
+        # User selects an optional categorical column to group by
+        group_by_options = ["None"] + cat_cols
+        group_by_col = st.selectbox("Group histogram by (optional categorical column)", group_by_options, key=f"hist_group_by_select_{[num_cols][0]}")
+
+        # Drop NaN values for the selected column(s)
+        # If grouping, drop NaNs from both the selected numeric column and the group-by column
+        if group_by_col != "None":
+            plot_df = df[[selected_col, group_by_col]].dropna()
+            if plot_df.empty:
+                st.warning(f"No data available for '{selected_col}' when grouped by '{group_by_col}' after dropping missing values. Please check your data.")
+                return
+        else:
+            plot_df = df[[selected_col]].dropna()
+            if plot_df.empty:
+                st.warning(f"No data available for '{selected_col}' after dropping missing values. Please check your data.")
+                return
+
+        col_data = plot_df[selected_col]
+
+        st.subheader(f"Distribution of '{selected_col}'")
+
+        # Create the histogram with KDE using Plotly Express
+        # Use the 'color' argument if a group_by_col is selected
+        if group_by_col != "None":
+            fig = px.histogram(
+                plot_df,
+                x=selected_col,
+                color=group_by_col, # Group by the selected categorical column
+                marginal="box", # Add marginal box plot
+                hover_data=plot_df.columns,
+                title=f"Histogram and KDE of {selected_col} grouped by {group_by_col}",
+                labels={selected_col: selected_col, group_by_col: group_by_col},
+                template="plotly_white",
+                histnorm='probability density' # Normalize to show density
+            )
+        else:
+            fig = px.histogram(
+                plot_df,
+                x=selected_col,
+                marginal="box", # Add marginal box plot
+                hover_data=plot_df.columns,
+                title=f"Histogram and KDE of {selected_col}",
+                labels={selected_col: selected_col},
+                template="plotly_white",
+                histnorm='probability density' # Normalize to show density
+            )
+
+        fig.update_layout(
+            bargap=0.1, # Gap between bars
+            xaxis_title=selected_col,
+            yaxis_title="Density",
+            height=500,
+            hovermode="x unified"
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.subheader("Key Statistics and Interpretation")
+        st.markdown(f"**Column:** `{selected_col}`")
+
+        # Calculate statistics only on the selected numeric column data
+        mean_val = col_data.mean()
+        median_val = col_data.median()
+        std_dev_val = col_data.std()
+        skewness_val = col_data.skew()
+
+        st.write(f"- **Mean:** `{mean_val:.2f}` (The average value)")
+        st.write(f"- **Median:** `{median_val:.2f}` (The middle value when data is ordered)")
+        st.write(f"- **Standard Deviation:** `{std_dev_val:.2f}` (Measures the spread or dispersion of the data)")
+        st.write(f"- **Skewness:** `{skewness_val:.2f}` (Indicates the asymmetry of the distribution)")
+
+        st.markdown("---")
+        st.markdown("#### Interpretation of Skewness:")
+        if skewness_val > 0.5:
+            st.write("📈 **Positive Skew (Right-skewed):** The tail on the right side of the distribution is longer or fatter. This means there are more values concentrated on the left side, with some higher values pulling the mean to the right (e.g., income distribution).")
+        elif skewness_val < -0.5:
+            st.write("📉 **Negative Skew (Left-skewed):** The tail on the left side of the distribution is longer or fatter. This means there are more values concentrated on the right side, with some lower values pulling the mean to the left (e.g., test scores where most students did well).")
+        else:
+            st.write("⚖️ **Approximately Symmetrical:** The distribution is relatively balanced, with similar tails on both sides. The mean and median are likely close to each other (e.g., height distribution).")
+            
 def render_histogram_with_kde(df, num_cols):
     st.markdown(thick_line, unsafe_allow_html=True)
     st.header("📊 Histogram & Kernel Density Estimate (KDE)")
@@ -1100,7 +1192,7 @@ def main():
                 for col in num_cols:
                     ## st.subheader(f"Distribution — {col}")
                     try:
-                        render_histogram_with_kde(df, [col]) # Pass as list for consistency
+                        render_histogram_with_kde_groupby(df, [col], all_dataframe_cols) # Pass as list for consistency
                     except Exception as e:
                         st.error(f"Error plotting histogram and KDE for {col}: {e}")
 
