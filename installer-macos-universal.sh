@@ -79,7 +79,10 @@ APP_TMP="$HOME/Desktop/$SHORTCUT_NAME.scpt"
 
 APPLESCRIPT=$(cat <<END
 on run
-    do shell script "cd '$APP_DIR'; '$RUNSH'"
+    tell application "Terminal"
+        do script "cd '$APP_DIR'; bash '$RUNSH'"
+        activate
+    end tell
 end run
 END
 )
