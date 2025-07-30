@@ -1,0 +1,16 @@
+name: basic-stats-explorer
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.11
+  - streamlit
+  - pandas
+  - numpy
+  - matplotlib
+  - openpyxl
+  - xlrd
+  - plotly
+  - scikit-learn
+  - scipy
+  - lightgbm
