@@ -1,4 +1,4 @@
-name: basic-stats-explorer
+name: statquickie
 channels:
   - defaults
   - conda-forge
