@@ -6,7 +6,7 @@ Write-Host "==============================="
 
 # CONFIGURATION
 $envName = "statquickie"       # Update if your env name is different
-$yamlFile = "environment.yml"
+$yamlFile = "__environment__.yml"
 $appFile = "app.py"
 $shortcutName = "Start Basic Stat Quickie App.lnk"
 
